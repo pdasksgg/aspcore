@@ -29,7 +29,7 @@ namespace Library.API.Controllers
 
         }
 
-        [HttpGet]
+        [HttpGet(Name ="getBooksForAuthor")]
         public IActionResult GetBooksForAuthor(Guid authorId)
         {
             if (!_libraryRepository.AuthorExists(authorId))
@@ -43,7 +43,9 @@ namespace Library.API.Controllers
                 return this.CreateLinksForBook(book);
             });
 
-            return Ok(booksForAuthor);
+            var wrapper = new LinkedCollectionWrapperDto<BookDto>(booksForAuthor);
+            
+            return Ok(this.CreateLinksForBooks(wrapper));
         }
 
         [HttpGet("{id}",Name ="getBookForAuthor")]
@@ -60,7 +62,7 @@ namespace Library.API.Controllers
             return Ok(CreateLinksForBook(bookForAuthor));
         }
 
-        [HttpPost]
+        [HttpPost(Name ="createBookForAuthor")]
         public IActionResult CreateBookForAuthor(Guid authorId,[FromBody] BookForCreationDto book)
         {
             if (book == null)
@@ -218,6 +220,12 @@ namespace Library.API.Controllers
             book.Links.Add(new LinkDto(_urlHelper.Link("updateBookForAuthor", new { id = book.Id }), "update_book", "PUT"));
             book.Links.Add(new LinkDto(_urlHelper.Link("partiallyUpdateBookForAuthor", new { id = book.Id }), "partially_update_book", "PATCH"));
             return book;
+        }
+
+        private LinkedCollectionWrapperDto<BookDto> CreateLinksForBooks(LinkedCollectionWrapperDto<BookDto> booksWrapper)
+        {
+            booksWrapper.Links.Add(new LinkDto(_urlHelper.Link("getBooksForAuthor", new {  }), "self", "GET"));
+            return booksWrapper;
         }
     }
 }

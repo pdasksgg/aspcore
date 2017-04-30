@@ -19,7 +19,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Newtonsoft.Json.Serialization;
-
+using AspNetCoreRateLimit;
 namespace Library.API
 {
     public class Startup
@@ -71,6 +71,26 @@ namespace Library.API
 
             services.AddTransient<IPropertyMappingService, PropertyMappingService>();
             services.AddTransient<ITypeHelperService, TypeHelperService>();
+
+            services.AddHttpCacheHeaders(expirationModel=> {
+                expirationModel.MaxAge = 600;
+            },vaidationModel=> {
+                vaidationModel.AddMustRevalidate = true;
+
+            });
+
+            services.AddMemoryCache();
+
+            services.Configure<IpRateLimitOptions>(options => {
+                options.GeneralRules = new System.Collections.Generic.List<RateLimitRule>() {
+
+                    new RateLimitRule(){ Endpoint="*",Limit=1000,Period="5m" },
+                    new RateLimitRule(){ Endpoint="*",Limit=200,Period="10s" }
+                };
+            });
+
+            services.AddSingleton<IRateLimitCounterStore, MemoryCacheRateLimitCounterStore>();
+            services.AddSingleton<IIpPolicyStore, MemoryCacheIpPolicyStore>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -105,6 +125,10 @@ namespace Library.API
             }
 
             libraryContext.EnsureSeedDataForContext();
+
+            app.UseIpRateLimiting();
+
+            app.UseHttpCacheHeaders();
 
             AutoMapper.Mapper.Initialize(cfg => {
                 cfg.CreateMap<Entities.Author, Models.AuthorDto>()
